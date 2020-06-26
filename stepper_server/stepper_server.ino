@@ -91,30 +91,12 @@ void handleMove(AsyncWebServerRequest *request) {
       return;
     }
   }
-  if (degParam < -720 || degParam > 720) {
-    String message = "Invalid input\n\n";
-    message += "URI: ";
-    message += request->url();
-    message += "\nMethod: ";
-    message += (request->method() == HTTP_GET) ? "GET" : "POST";
-    message += "\nArguments: \n";
-    int params = request->params();
-    for (int i = 0; i < params; i++) {
-      AsyncWebParameter* p = request->getParam(i);
-      message += String(sprintf("GET[%s]: %s\n", p->name().c_str(), p->value().c_str()));
-    }
-    request->send(400, "text/plain", message);
-    return;
-  }
 
   int steps = (degParam / (float)360) * 3200;
   stepper.move(steps);
   
   String message = "success \ndeg: " + String(degParam);
   request->send("text/plain", message.length(), [message](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
-    Serial.println(stepper.currentPosition());
-    Serial.println(stepper.isRunning());
-    Serial.println(stepper.targetPosition());
     if(stepper.isRunning()) {
       return 0;
     }
