@@ -34,7 +34,8 @@ namespace CameraControl
             PROGRESS,
             ANGLEINFO,
             MOUSE_CURSOR,
-            SHUT_DOWN
+            SHUT_DOWN,
+            FILE_CREATED,
         }
 
         private Type _type = Type.NONE;

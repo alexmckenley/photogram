@@ -30,15 +30,20 @@ namespace CameraControl
         private int photosPerRotation= 5;
         private int currentPhoto = 0;
 
-        public RotationDialog(ref CameraController controller)
+        private ActionSource _actionSource = null;
+
+        public RotationDialog(ref CameraController controller, ref ActionSource actionSource)
         {
             IObserver iObs = this;
 
             InitializeComponent();
             frmRotationDialog = this;
             _controller = controller;
+            _actionSource = actionSource;
 
             progressLabel.Text = $"{currentPhoto} / {photosPerRotation}";
+
+            _actionSource.FireEvent(ActionEvent.Command.TAKE_PICTURE, IntPtr.Zero);
         }
 
         ~RotationDialog()

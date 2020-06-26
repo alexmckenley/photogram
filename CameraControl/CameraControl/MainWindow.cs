@@ -200,7 +200,7 @@ namespace CameraControl
 
         private void beginRotation_click(object sender, EventArgs e)
         {
-            IObserver frmRotationDialog = new RotationDialog(ref _controller);
+            IObserver frmRotationDialog = new RotationDialog(ref _controller, ref _actionSource);
             _controller.GetModel().Add(ref frmRotationDialog);
 
             ((RotationDialog)frmRotationDialog).ShowDialog();
