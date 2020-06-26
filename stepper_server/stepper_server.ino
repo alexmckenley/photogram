@@ -47,7 +47,9 @@ void setup() {
   server.begin();
 
   // Setup stepper
-  stepper.setMaxSpeed(1000);
+  stepper.setMaxSpeed(2000);
+  stepper.setSpeed(2000);
+  stepper.setAcceleration(2000);
 
   Serial.println("HTTP server started");
 }
@@ -55,7 +57,7 @@ void setup() {
 // the loop function runs over and over again forever
 void loop() {
   MDNS.update();
-  stepper.runSpeed();
+  stepper.run();
 }
 
 void doMove(long deg, long dir) {
@@ -81,24 +83,15 @@ void handleRoot(AsyncWebServerRequest *request) {
 
 void handleMove(AsyncWebServerRequest *request) {
   long degParam = 0;
-  long dirParam = 0;
-  if (request->hasParam("dir")) {
-    AsyncWebParameter* p = request->getParam("dir");
-    dirParam = String(p->value().c_str()).toInt();
-    if (dirParam < 0 || dirParam > 1) {
-      request->send(400, "text/plain", "invalid dir param, got: \"" + String(p->value().c_str()) + "\"[" + dirParam + "]\"");
-      return;
-    }
-  }
   if (request->hasParam("deg")) {
     AsyncWebParameter* p = request->getParam("deg");
     degParam = String(p->value().c_str()).toInt();
-    if (degParam == 0 || degParam > 720) {
+    if (degParam == 0 || degParam > 720 || degParam < -720) {
       request->send(400, "text/plain", "invalid deg param, got: \"" + String(p->value().c_str()) + "\"[" + degParam + "]");
       return;
     }
   }
-  if (degParam < 1 || degParam > 720 || dirParam < 0 || dirParam > 1) {
+  if (degParam < -720 || degParam > 720) {
     String message = "Invalid input\n\n";
     message += "URI: ";
     message += request->url();
@@ -117,8 +110,11 @@ void handleMove(AsyncWebServerRequest *request) {
   int steps = (degParam / (float)360) * 3200;
   stepper.move(steps);
   
-  String message = "success \ndeg: " + String(degParam) + "\ndir: " + String(dirParam);
+  String message = "success \ndeg: " + String(degParam);
   request->send("text/plain", message.length(), [message](uint8_t *buffer, size_t maxLen, size_t index) -> size_t {
+    Serial.println(stepper.currentPosition());
+    Serial.println(stepper.isRunning());
+    Serial.println(stepper.targetPosition());
     if(stepper.isRunning()) {
       return 0;
     }
