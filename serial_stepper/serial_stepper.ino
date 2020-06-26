@@ -10,24 +10,21 @@
 
 //================
 
-#define R_PIN 11
-#define G_PIN 6
-#define B_PIN 3
-
-byte outputPins[3] = {R_PIN, G_PIN, B_PIN};
-
-
-boolean inProgress = false;
-boolean startFound = false;
-boolean allReceived = false;
+#define DIR_PIN 7
+#define STEP_PIN 8
 
 //================
+bool dirHigh;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT); // for debugging
-  pinMode(R_PIN, OUTPUT);
-  pinMode(G_PIN, OUTPUT);
-  pinMode(B_PIN, OUTPUT);
+  pinMode(DIR_PIN, OUTPUT);
+  pinMode(STEP_PIN, OUTPUT);
+
+  digitalWrite(DIR_PIN, HIGH);
+  digitalWrite(STEP_PIN, HIGH);
+
+
   Serial.begin(115200);
 
   // register callback called if packet has come
@@ -44,6 +41,30 @@ void setup() {
 //================
 
 void loop() {
+
+  // Toggle the DIR pin to change direction.
+  if (dirHigh)
+  {
+    dirHigh = false;
+    digitalWrite(DIR_PIN, LOW);
+  }
+  else
+  {
+    dirHigh = true;
+    digitalWrite(DIR_PIN, HIGH);
+  }
+
+  // Step the motor 50 times before changing direction again.
+  for (int i = 0; i < 12000; i++)
+  {
+    // Trigger the motor to take one step.
+    digitalWrite(STEP_PIN, HIGH);
+    delayMicroseconds(100000000);
+    digitalWrite(STEP_PIN, LOW);
+    delayMicroseconds(100000000);
+    
+  }
+
   Packetizer::parse();
 }
 
