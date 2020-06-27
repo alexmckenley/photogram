@@ -10,75 +10,18 @@
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncWiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
 #include <AccelStepper.h>
+#include <AsyncElegantOTA.h>
 
 #define STEP_PIN 5
 #define DIR_PIN 4
 
+String indexHTML = "<html lang=\"en\"> <head> <meta charset=\"utf-8\"> <title>photogram.local</title> <meta name=\"description\" content=\"photogram.local web interface\"> </head> <body> <div style=\"padding: 20px; display: flex; justify-content: center; align-items: center; flex-direction: column; font-family: Helvetica, Arial, sans-serif;\"> <h1> photogram.local </h1> <table> <tr> <td> <button onClick=\"window.move(-2 * getDeg())\"> &lt;&lt; </button> <button onClick=\"window.move(-1 * getDeg())\"> &lt; </button> </td> <td> <form onSubmit=\"return false;\" style=\"margin: 0;\"> <input id=\"deg\" type=\"text\" value=\"15\" size=\"3\" style=\"text-align:center;\" /> </form> </td> <td> <button onClick=\"window.move(getDeg())\"> &gt; </button> <button onClick=\"window.move(2 * getDeg())\"> &gt;&gt; </button> </td> </tr> </table> </div> <script> window.getDeg = function() { return parseInt(document.querySelector(\'#deg\').value, 10); }; window.move = function(deg) { fetch(\'/move?deg=\' + window.encodeURIComponent(deg)); }; </script> </body> </html> ";
 AsyncWebServer server(80);
 DNSServer dns;
 AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
 
-unsigned long lastUpdate = 0;
-
-
-// the setup function runs once when you press reset or power the board
-void setup() {
-  Serial.begin(115200);
-  Serial.println("");
-
-  // initialize pins
-  pinMode(STEP_PIN, OUTPUT);
-  pinMode(DIR_PIN, OUTPUT);
-  digitalWrite(DIR_PIN, LOW);
-
-  // Setup WIFIManager
-  AsyncWiFiManager wifiManager(&server, &dns);
-  wifiManager.autoConnect("photogram_SETUP", "photogram");
-
-  // Setup MDNS
-  if (MDNS.begin("photogram")) {
-    Serial.println("MDNS responder started");
-  }
-
-  // Setup web server
-  server.on("/", HTTP_GET, handleRoot);
-  server.on("/move", HTTP_GET, handleMove);
-  server.onNotFound(handleNotFound);
-  server.begin();
-
-  // Setup stepper
-  stepper.setMaxSpeed(2000);
-  stepper.setSpeed(2000);
-  stepper.setAcceleration(2000);
-
-  Serial.println("HTTP server started");
-}
-
-// the loop function runs over and over again forever
-void loop() {
-  MDNS.update();
-  stepper.run();
-}
-
-void doMove(long deg, long dir) {
-  int fullRevolutionSteps = 3200;
-  int steps = (deg / (float)360) * fullRevolutionSteps;
-
-  for (int i = 0; i < steps; i++) {
-    digitalWrite(STEP_PIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-    delayMicroseconds(1000);
-    digitalWrite(STEP_PIN, LOW);    // turn the LED off by making the voltage LOW
-    delayMicroseconds(1000);
-  }
-}
-void moveOneStep() {
-  digitalWrite(STEP_PIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delayMicroseconds(10);
-  digitalWrite(STEP_PIN, LOW);    // turn the LED off by making the voltage LOW
-}
-
 void handleRoot(AsyncWebServerRequest *request) {
-  request->send(200, "text/plain", "I'm alive!! \n\n" + String(random(1000)));
+  request->send(200, "text/html", indexHTML);
 }
 
 void handleMove(AsyncWebServerRequest *request) {
@@ -118,4 +61,49 @@ void handleNotFound(AsyncWebServerRequest *request) {
     message += String(sprintf("GET[%s]: %s\n", p->name().c_str(), p->value().c_str()));
   }
   request->send(404, "text/plain", message);
+}
+
+// the setup function runs once when you press reset or power the board
+void setup() {
+  Serial.begin(115200);
+  Serial.println("");
+
+  // initialize pins
+  pinMode(STEP_PIN, OUTPUT);
+  pinMode(DIR_PIN, OUTPUT);
+  digitalWrite(DIR_PIN, LOW);
+
+  // Setup WIFIManager
+  WiFi.hostname("photogram-local");
+  AsyncWiFiManager wifiManager(&server, &dns);
+  wifiManager.autoConnect("photogram_SETUP", "photogram");
+
+  // Setup MDNS
+  if (MDNS.begin("photogram")) {
+    MDNS.addService("http", "tcp", 80);
+  }
+
+  // Setup web server
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/move", HTTP_GET, handleMove);
+  
+  // Start elegant OTA
+  AsyncElegantOTA.begin(&server);
+  
+  server.onNotFound(handleNotFound);
+  server.begin();
+
+  // Setup stepper
+  stepper.setMaxSpeed(2000);
+  stepper.setSpeed(2000);
+  stepper.setAcceleration(2000);
+
+  Serial.println("HTTP server started");
+}
+
+// the loop function runs over and over again forever
+void loop() {
+  AsyncElegantOTA.loop();
+  MDNS.update();
+  stepper.run();
 }
